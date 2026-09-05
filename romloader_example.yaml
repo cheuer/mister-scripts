@@ -1,0 +1,45 @@
+### rename this to romloader.yaml and edit the settings below to match your setup.
+
+### default directory to put the ROM if no rules are matched.
+### Make sure this directory exists on your SD card
+default_destination: "/romloader"
+
+### uncomment to have romloader write the name of the selected MSU pack to a file
+# title_output_file: 'C:\Users\Spleebie\Desktop\PhantomBot-3.10.3.1\addons\romloader.txt'
+
+### default title to write for non-msu packs
+default_title: "Not an MSU pack"
+
+### the host name of your MiSTer
+mister_host: "mister"
+
+### the base path to your SNES ROMs on your MiSTer
+mister_snes_base: "/media/fat/games/SNES"
+
+### a set of rules to use to put certain ROMs in certain locations, such as your randomizer ROMs, useful for MSU1 users
+rules:
+  alttpr:
+    name_pattern:
+      - "alttpr*" # look for an input ROM that matches this name
+      - "ER_*"
+      - "DR_*"
+      - "Daily Challenge_*"
+      - "BM_*"
+      - "OR_*"
+      - "o2-alttpr*"
+      - "MYSTERY_*"
+    destinations:
+      - name: default
+        path: "/romloader"
+      - name: MSU Pack Name
+        path: "/msu/packname"
+        romname: alttp_msu.sfc
+  sm:
+    name_pattern:
+      - "SM*" # look for an input ROM that matches this name
+      - "VARIA*"
+      - "Custom_VARIA*"
+      - "map-rando*"
+    destinations:
+      - name: default
+        path: "/sm"
