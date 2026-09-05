@@ -171,6 +171,7 @@ $yamlHost = Get-YamlValue -InputObject $yamlData -Name 'mister_host'
 $yamlBase = Get-YamlValue -InputObject $yamlData -Name 'mister_snes_base'
 $yamlTitleOutputFile = Get-YamlValue -InputObject $yamlData -Name 'title_output_file'
 $yamlDefaultTitle = Get-YamlValue -InputObject $yamlData -Name 'default_title'
+$yamlDefaultDestination = Get-YamlValue -InputObject $yamlData -Name 'default_destination'
 
 $resolvedHost = if ($MisterHost) {
     $MisterHost
@@ -190,11 +191,21 @@ $resolvedBase = if ($MisterSnesBase) {
 
 $titleOutputFile = if ($yamlTitleOutputFile) { [string]$yamlTitleOutputFile } else { $null }
 $defaultTitle = if ($yamlDefaultTitle) { [string]$yamlDefaultTitle } else { 'Not an MSU pack' }
+$defaultDestination = if ($yamlDefaultDestination) { [string]$yamlDefaultDestination } else { $null }
 
 $candidates = @(Get-RomLoaderDestinations -YamlData $yamlData -LocalFile $localBasename)
 
 if ($candidates.Count -eq 0) {
-    throw "No matching destinations found for '$localBasename'."
+    if (-not [string]::IsNullOrWhiteSpace($defaultDestination)) {
+        Write-Host "No matching destinations found; using default destination '$defaultDestination'." -ForegroundColor Yellow
+        $candidates = @([pscustomobject]@{
+            Name = 'default'
+            Path = $defaultDestination
+            RomName = $null
+        })
+    } else {
+        throw "No matching destinations found for '$localBasename'."
+    }
 }
 
 Write-Host "Loaded $($candidates.Count) destination(s) from $YamlPath" -ForegroundColor Cyan
@@ -211,22 +222,28 @@ foreach ($candidate in $candidates) {
     }
 }
 
-Write-Host "`nSelect a destination:"
-for ($i = 0; $i -lt $menuItems.Count; $i++) {
-    Write-Host ("{0}. {1}" -f ($i + 1), $menuItems[$i].Label)
+if ($menuItems.Count -eq 1) {
+    $selected = $menuItems[0]
+    Write-Host "`nOnly one destination available; selecting: $($selected.Label)" -ForegroundColor Cyan
+} else {
+    Write-Host "`nSelect a destination:"
+    for ($i = 0; $i -lt $menuItems.Count; $i++) {
+        Write-Host ("{0}. {1}" -f ($i + 1), $menuItems[$i].Label)
+    }
+
+    $choice = Read-Host 'Enter choice number'
+    if ($choice -notmatch '^[0-9]+$') {
+        throw 'Invalid selection.'
+    }
+
+    $choiceNumber = [int]$choice
+    if ($choiceNumber -lt 1 -or $choiceNumber -gt $menuItems.Count) {
+        throw 'Selection out of range.'
+    }
+
+    $selected = $menuItems[$choiceNumber - 1]
 }
 
-$choice = Read-Host 'Enter choice number'
-if ($choice -notmatch '^\d+$') {
-    throw 'Invalid selection.'
-}
-
-$choiceNumber = [int]$choice
-if ($choiceNumber -lt 1 -or $choiceNumber -gt $menuItems.Count) {
-    throw 'Selection out of range.'
-}
-
-$selected = $menuItems[$choiceNumber - 1]
 $targetName = if ($selected.RomName) { $selected.RomName } else { $localBasename }
 $remotePath = Join-RemotePath -BasePath ($resolvedBase + $selected.Path) -TargetName $targetName
 
@@ -248,7 +265,7 @@ if ($DryRun) {
     return
 }
 
-Write-Host 'Copying…'
+Write-Host 'Copying...'
 $copyExitCode = 0
 try {
     & scp -- $LocalFile ("{0}:{1}" -f $resolvedHost, $remotePath)
@@ -260,7 +277,7 @@ try {
 if ($copyExitCode -eq 0) {
     Write-Host 'Copy succeeded.'
 
-    Write-Host 'Launching ROM on MiSTer…'
+    Write-Host 'Launching ROM on MiSTer...'
     try {
         $launchBody = @{ path = $remotePath } | ConvertTo-Json -Compress
         $null = curl.exe -s -X POST ("http://{0}:8182/api/launch" -f $resolvedHost) -H 'Content-Type: application/json' --data $launchBody
