@@ -280,10 +280,16 @@ if ($copyExitCode -eq 0) {
     Write-Host 'Launching ROM on MiSTer...'
     try {
         $launchBody = @{ path = $remotePath } | ConvertTo-Json -Compress
-        $null = curl.exe -s -X POST ("http://{0}:8182/api/launch" -f $resolvedHost) -H 'Content-Type: application/json' --data $launchBody
+        $launchUrl = ("http://{0}:8182/api/launch" -f $resolvedHost)
+        Write-Host ("DEBUG request body: {0}" -f $launchBody)
+        Write-Host ("POST {0}" -f $launchUrl)
+
+        Invoke-RestMethod -Method Post -Uri $launchUrl -ContentType 'application/json' -Body $launchBody
+
         Write-Host 'Launch POST succeeded.'
     } catch {
-        Write-Warning 'Launch POST failed.'
+        $message = $_.Exception.Message
+        Write-Warning "Launch POST failed. $message"
     }
 
     Write-Host 'Done.'
