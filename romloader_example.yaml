@@ -13,8 +13,8 @@ default_title: "Not an MSU pack"
 ### the host name of your MiSTer
 mister_host: "mister"
 
-### the base path to your SNES ROMs on your MiSTer
-mister_snes_base: "/media/fat/games/SNES"
+### the base path to your ROMs on your MiSTer (SNES/NES subfolders are appended automatically)
+mister_roms_base: "/media/fat/games"
 
 ### a set of rules to use to put certain ROMs in certain locations, such as your randomizer ROMs, useful for MSU1 users
 rules:

@@ -4,7 +4,7 @@ param(
     [string]$LocalFile,
     [string]$YamlPath,
     [string]$MisterHost,
-    [string]$MisterSnesBase,
+    [string]$MisterRomsBase,
     [switch]$DryRun
 )
 
@@ -168,7 +168,7 @@ $localBasename = Split-Path -Path $LocalFile -Leaf
 $yamlData = Get-RomLoaderYamlData -Path $YamlPath
 
 $yamlHost = Get-YamlValue -InputObject $yamlData -Name 'mister_host'
-$yamlBase = Get-YamlValue -InputObject $yamlData -Name 'mister_snes_base'
+$yamlBase = Get-YamlValue -InputObject $yamlData -Name 'mister_roms_base'
 $yamlTitleOutputFile = Get-YamlValue -InputObject $yamlData -Name 'title_output_file'
 $yamlDefaultTitle = Get-YamlValue -InputObject $yamlData -Name 'default_title'
 $yamlDefaultDestination = Get-YamlValue -InputObject $yamlData -Name 'default_destination'
@@ -181,12 +181,24 @@ $resolvedHost = if ($MisterHost) {
     'mister.local'
 }
 
-$resolvedBase = if ($MisterSnesBase) {
-    $MisterSnesBase
+$resolvedBase = if ($MisterRomsBase) {
+    $MisterRomsBase
 } elseif ($yamlBase) {
     [string]$yamlBase
 } else {
-    '/media/fat/games/SNES'
+    '/media/fat/games'
+}
+
+$snesExtensions = @('.sfc', '.smc')
+$nesExtensions = @('.nes')
+$localExtension = [System.IO.Path]::GetExtension($LocalFile).ToLowerInvariant()
+
+$coreFolder = if ($snesExtensions -contains $localExtension) {
+    'SNES'
+} elseif ($nesExtensions -contains $localExtension) {
+    'NES'
+} else {
+    throw "Unsupported file extension '$localExtension'. Supported extensions: .sfc, .smc, .nes"
 }
 
 $titleOutputFile = if ($yamlTitleOutputFile) { [string]$yamlTitleOutputFile } else { $null }
@@ -245,7 +257,8 @@ if ($menuItems.Count -eq 1) {
 }
 
 $targetName = if ($selected.RomName) { $selected.RomName } else { $localBasename }
-$remotePath = Join-RemotePath -BasePath ($resolvedBase + $selected.Path) -TargetName $targetName
+$remoteBase = Join-RemotePath -BasePath $resolvedBase -TargetName $coreFolder
+$remotePath = Join-RemotePath -BasePath ($remoteBase + $selected.Path) -TargetName $targetName
 
 if ($selected.Name -eq 'default') {
     $titleText = $defaultTitle
